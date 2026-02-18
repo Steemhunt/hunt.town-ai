@@ -1,115 +1,136 @@
 <p align="center">
-  <img src="https://hunt.town/logo-256.png" alt="Hunt Town" width="80" />
+  <img src="https://hunt.town/images/logo.svg" width="80" alt="Hunt Town" />
 </p>
 
-<h1 align="center">Hunt Town — AI Tools</h1>
+<h1 align="center">hunt.town-ai</h1>
 
 <p align="center">
-  Build, vote, and manage <a href="https://hunt.town">Co-op projects</a> on Base — from the terminal, AI assistants, or autonomous agents.
+  AI-friendly tools for <a href="https://hunt.town">Hunt Town</a> — the first onchain cooperative on Base
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/hunt.town-cli"><img src="https://img.shields.io/npm/v/hunt.town-cli.svg?style=flat-square&label=CLI" alt="CLI npm" /></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="MIT" /></a>
+  <a href="./cli">CLI</a> ·
+  <a href="./mcp">MCP Server</a> ·
+  <a href="./agent-skills">Agent Skill</a>
 </p>
 
 ---
 
 ## What is Hunt Town?
 
-[Hunt Town](https://hunt.town) is the first onchain cooperative (Co-op) for Web3 builders and backers. Builders launch HUNT-backed project tokens, backers mint them daily with Backing Points, and the entire economy grows together through shared reserve value.
+Hunt Town is the first onchain cooperative (Co-op) model for Web3 builders and backers. Builders launch project tokens backed by HUNT (the reserve token) via bonding curves, backers mint them daily with Backing Points. Everything is connected through HUNT on Base.
 
-This monorepo provides AI-ready tooling for the Co-op:
+- **Docs**: https://docs.hunt.town
+- **App**: https://hunt.town
 
-| Package | Description | Install |
-|---------|-------------|---------|
-| **[`cli/`](./cli/)** | `ht` command-line interface | `npm i -g hunt.town-cli` |
-| **`mcp/`** | MCP server for Claude, Cursor, etc. | _coming soon_ |
-| **`agent-skills/`** | Agent skill for OpenClaw | _coming soon_ |
+## Packages
 
----
+| Package | Description | npm |
+|---------|-------------|-----|
+| [`cli/`](./cli) | `ht` command-line tool — 14 commands for full Co-op participation | `hunt.town-cli` |
+| [`mcp/`](./mcp) | MCP server — exposes Co-op tools to AI assistants (Claude, Cursor, etc.) | `hunttown-mcp` |
+| [`agent-skills/`](./agent-skills) | Agent skill file — teach any AI agent to use the `ht` CLI | — |
 
 ## Quick Start
 
-### CLI
-
 ```bash
+# Install the CLI
 npm install -g hunt.town-cli
 
-ht projects                           # List all Co-op projects
-ht project H1                         # Detailed project info
-ht stats                              # Co-op overview (TVL, daily stats)
-ht leaderboard                        # Top projects by HUNT reserve
-ht updates                            # Recent builder updates
-ht wallet                             # Wallet address and balances
-ht post-update H1 "https://..."       # Post a builder update (burns HUNT)
+# Explore the Co-op
+ht projects          # List all projects
+ht stats             # Co-op overview
+ht project ONCHAT    # Detailed project info
+
+# Set up wallet for write operations
+mkdir -p ~/.hunttown
+echo "PRIVATE_KEY=0x..." > ~/.hunttown/.env
+
+# Participate
+ht vote ONCHAT 10    # Vote on a project
+ht claimable         # Check voting rewards
+ht claim ONCHAT      # Claim rewards
+ht royalty           # Check bonding curve royalties
 ```
 
-→ **[Full CLI docs](./cli/README.md)**
+## CLI Commands
 
----
+### Read
 
-## How It Works
+| Command | Description |
+|---------|-------------|
+| `ht projects` | List all Co-op projects |
+| `ht project <symbol>` | Detailed project info |
+| `ht stats` | Co-op overview (HUNT price, TVL, daily rewards) |
+| `ht leaderboard` | Top projects by HUNT reserve |
+| `ht updates` | Recent builder updates |
+| `ht wallet` | Wallet balances |
+| `ht claimable` | Claimable HUNT from voting |
+| `ht royalty` | Accumulated bonding curve royalties |
+
+### Write
+
+| Command | Description |
+|---------|-------------|
+| `ht vote <symbol> <amount>` | Vote on a project |
+| `ht claim <symbol>` | Claim voting rewards |
+| `ht claim-royalty` | Claim bonding curve royalties |
+| `ht post-update <symbol> <link>` | Post a builder update (burns HUNT) |
+| `ht create-project` | Create a new Co-op project |
+| `ht zap-mint <symbol> <amount>` | Buy tokens with ETH/USDC |
+
+## MCP Server
+
+```bash
+npm install -g hunttown-mcp hunt.town-cli
+```
+
+Add to your MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "hunttown": {
+      "command": "hunttown-mcp"
+    }
+  }
+}
+```
+
+## Agent Skill
+
+For [OpenClaw](https://openclaw.ai) / [ClawHub](https://clawhub.com) agents:
+
+```bash
+clawhub install hunttown
+```
+
+Or copy [`agent-skills/SKILL.md`](./agent-skills/SKILL.md) into your agent's skills directory.
+
+## Architecture
 
 ```
-User / AI Agent
-      │
-      ├── CLI ──────────── ht projects / ht stats / ht post-update
-      ├── MCP Server ───── tool call → ht CLI → transaction (coming soon)
-      └── Agent Skill ──── reads SKILL.md → runs ht CLI (coming soon)
-      │
-      ▼
-   ht CLI (hunt.town-cli)
-      │
-      ├── Mint Club API ── Project list, metadata, reserve stats
-      ├── Mintpad ──────── Voting, claiming, daily stats
-      ├── ProjectUpdates ─ Builder progress (burns HUNT to post)
-      ├── MCV2_Bond ────── Bonding curve prices, reserves
-      └── 1inch Oracle ─── HUNT/USD price
-      │
-      ▼
-   Base L2 (Chain 8453)
+hunt.town-ai/
+├── cli/              # Core CLI (ht) — all logic lives here
+├── mcp/              # MCP server — thin wrapper, delegates to CLI
+├── agent-skills/     # SKILL.md — teaches agents to use the CLI
+└── README.md
 ```
 
-**The Co-op model:** Every project token is backed by HUNT through bonding curves. When builders launch tokens and backers mint them, more HUNT gets locked — strengthening the entire cooperative. AI agents can participate as first-class builders.
-
----
-
-## For AI Agents
-
-Hunt Town is designed for both human and AI builders. An AI agent can:
-
-1. **Monitor the Co-op** — `ht projects`, `ht stats`, `ht leaderboard`
-2. **Track builder activity** — `ht updates`, `ht project <symbol>`
-3. **Post updates** — `ht post-update <symbol> <link>` (requires wallet)
-4. **Analyze data** — All commands output structured, parseable text
-
-Set `PRIVATE_KEY` in your agent's environment and it can autonomously post project updates, track Co-op health, and participate as a builder.
-
----
+The MCP server and agent skill both delegate to the `ht` CLI. No code duplication — single source of truth.
 
 ## Contracts
 
-| Contract | Address | Purpose |
-|----------|---------|---------|
-| Mintpad | [`0xfb51...a647fE`](https://basescan.org/address/0xfb51D2120c27bB56D91221042cb2dd2866a647fE) | Voting, claiming, daily rewards |
-| ProjectUpdates | [`0xdD06...4303A`](https://basescan.org/address/0xdD066121E4488edB73c4Ff7f461592c084e4303A) | Builder update posts (burns HUNT) |
-| MCV2_Bond | [`0xc5a0...FAa27`](https://basescan.org/address/0xc5a076cad94176c2996B32d8466Be1cE757FAa27) | Bonding curves, token creation |
-| HUNT | [`0x37f0...064C`](https://basescan.org/address/0x37f0c2915CeCC7e977183B8543Fc0864d03E064C) | Reserve token (ERC-20) |
+All on **Base** (chain 8453):
 
----
-
-## Links
-
-| | |
-|---|---|
-| 🌐 **App** | [hunt.town](https://hunt.town) |
-| 📖 **Docs** | [docs.hunt.town](https://docs.hunt.town) |
-| 🏗️ **Contracts** | [Steemhunt/hunt-town](https://github.com/Steemhunt/hunt-town) |
-| 💬 **Community** | [Discord](https://discord.gg/hunt-town) |
-| 🐦 **Twitter** | [@steemhunt](https://twitter.com/steemhunt) |
-| 🔗 **Mint Club** | [mint.club](https://mint.club) |
+| Contract | Address |
+|----------|---------|
+| HUNT Token | `0x37f0c2915CeCC7e977183B8543Fc0864d03E064C` |
+| MCV2_Bond | `0xc5a076cad94176c2996B32d8466Be1cE757FAa27` |
+| Mintpad | `0xfb51D2120c27bB56D91221042cb2dd2866a647fE` |
+| ProjectUpdates | `0xdD066121E4488edB73c4Ff7f461592c084e4303A` |
+| ZapUniV4MCV2 | `0xa2e7BcA51A84Ed635909a8E845d5f66602742A75` |
 
 ## License
 
-MIT — built with 🏗️ by [H-1](https://hunt.town/project/H1) at [Hunt Town](https://hunt.town)
+MIT

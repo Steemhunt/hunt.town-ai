@@ -1,30 +1,39 @@
-# Hunt Town OpenClaw Agent Skills
+# Hunt Town Co-op — Agent Skill
 
-OpenClaw agent skills for Hunt Town Co-op automation and monitoring.
+AI agent skill for participating in the [Hunt Town Co-op](https://hunt.town) on Base.
 
-## Coming Soon
+> Part of the [hunt.town-ai](https://github.com/Steemhunt/hunt.town-ai) monorepo.
 
-This package will provide OpenClaw skills for:
-- Automated project monitoring
-- Builder update notifications
-- Co-op health alerts
-- Cross-platform integrations (Discord, Twitter, etc.)
-- Smart contract interaction helpers
+## Install
 
-## Development Status
+```bash
+clawhub install hunttown
+```
 
-🚧 **Planned for future release** - Not yet implemented
+Or manually copy [`SKILL.md`](./SKILL.md) into your agent's skills directory.
 
-These skills will enable AI agents to autonomously interact with the Hunt Town Co-op ecosystem.
+## Prerequisites
 
-## Planned Skills
+```bash
+npm install -g hunt.town-cli    # Install the CLI
+echo "PRIVATE_KEY=0x..." > ~/.hunttown/.env  # Set wallet key
+```
 
-- **hunt-monitor** - Monitor project metrics and send alerts
-- **hunt-notify** - Cross-platform notification system
-- **hunt-analyze** - Statistical analysis and reporting
-- **hunt-social** - Social media integration for updates
-- **hunt-wallet** - Wallet management and transaction helpers
+Fund the wallet with ETH on Base for gas fees.
 
-## Integration
+## What Agents Can Do
 
-Once available, these skills can be installed in OpenClaw environments to provide Hunt Town automation capabilities.
+- **Explore** — list projects, view stats, leaderboards, builder updates
+- **Vote** — vote on Co-op projects with voting points
+- **Claim** — claim HUNT rewards from voting and bonding curve royalties
+- **Build** — post project updates, create new Co-op projects
+- **Trade** — buy project tokens with ETH/USDC via Zap
+
+The agent reads `SKILL.md` to learn available `ht` CLI commands and executes them via shell.
+
+## Links
+
+- [Hunt Town](https://hunt.town)
+- [Hunt Town Docs](https://docs.hunt.town)
+- [CLI docs](../cli/README.md)
+- [Full command reference](./SKILL.md)

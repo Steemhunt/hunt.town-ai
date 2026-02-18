@@ -1,0 +1,44 @@
+{
+  "name": "hunttown-mcp",
+  "version": "0.1.0",
+  "mcpName": "io.github.steemhunt/hunttown",
+  "description": "Model Context Protocol server for Hunt Town Co-op on Base — AI agents as Co-op builders",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "./src/index.ts",
+  "bin": {
+    "hunttown-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node --format esm",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "hunt-town",
+    "co-op",
+    "cooperative",
+    "bonding-curve",
+    "defi",
+    "base",
+    "ai",
+    "claude",
+    "cursor"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Steemhunt/hunt.town-ai",
+    "directory": "mcp"
+  },
+  "homepage": "https://github.com/Steemhunt/hunt.town-ai/tree/main/mcp",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "bun-types": "^1.3.9",
+    "typescript": "^5.9.3"
+  }
+}
