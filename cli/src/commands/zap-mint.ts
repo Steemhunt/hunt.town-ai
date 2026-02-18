@@ -6,20 +6,10 @@ import type { Address } from 'viem';
 import { publicClient, createWalletClientForBase } from '../config/client.js';
 import { CONTRACTS } from '../config/contracts.js';
 import { ZAP_ABI } from '../abi/zap.js';
-import { fetchProjects, type TokenData } from '../utils/api.js';
+import { findProjectBySymbol } from '../utils/api.js';
 import { requireKey } from '../utils/wallet.js';
 import { formatTokenAmount, formatNumber } from '../utils/format.js';
-import { waitForTx, confirmAction } from '../utils/tx.js';
-import { ensureApproval } from '../utils/tx.js';
-
-/**
- * Find project by symbol
- */
-async function findProjectBySymbol(symbol: string): Promise<TokenData | null> {
-  const response = await fetchProjects();
-  const projects = response.tokens;
-  return projects.find(p => p.symbol.toLowerCase() === symbol.toLowerCase()) || null;
-}
+import { ensureApproval, waitForTx, confirmAction } from '../utils/tx.js';
 
 interface ZapMintOptions {
   from?: string;
@@ -94,7 +84,7 @@ export async function zapMintCommand(
       functionName: 'estimateMint',
       args: [
         fromTokenInfo.address,
-        project.address as Address,
+        project.tokenAddress as Address,
         projectTokenAmount,
       ],
     });
@@ -180,7 +170,7 @@ export async function zapMintCommand(
       functionName: 'mint',
       args: [
         fromTokenInfo.address,
-        project.address as Address,
+        project.tokenAddress as Address,
         projectTokenAmount,
         maxFromTokenAmount,
       ],

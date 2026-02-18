@@ -6,20 +6,11 @@ import type { Address } from 'viem';
 import { publicClient, createWalletClientForBase } from '../config/client.js';
 import { CONTRACTS } from '../config/contracts.js';
 import { PROJECT_UPDATES_ABI } from '../abi/project-updates.js';
-import { fetchProjects, type TokenData } from '../utils/api.js';
+import { findProjectBySymbol } from '../utils/api.js';
 import { requireKey, getWalletAddress } from '../utils/wallet.js';
 import { formatTokenAmount } from '../utils/format.js';
 import { ensureApproval, waitForTx, confirmAction } from '../utils/tx.js';
 import { getHuntPrice, huntToUSD } from '../utils/price.js';
-
-/**
- * Find project by symbol
- */
-async function findProjectBySymbol(symbol: string): Promise<TokenData | null> {
-  const response = await fetchProjects();
-  const projects = response.tokens;
-  return projects.find(p => p.symbol.toLowerCase() === symbol.toLowerCase()) || null;
-}
 
 /**
  * Validate URL format
@@ -104,7 +95,7 @@ export async function postUpdateCommand(symbol: string, link: string): Promise<v
       address: CONTRACTS.PROJECT_UPDATES,
       abi: PROJECT_UPDATES_ABI,
       functionName: 'postUpdate',
-      args: [project.address as Address, link],
+      args: [project.tokenAddress as Address, link],
     });
 
     await waitForTx(hash);

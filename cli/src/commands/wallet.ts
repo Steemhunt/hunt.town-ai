@@ -5,7 +5,7 @@ import { formatEther } from 'viem';
 import { publicClient } from '../config/client.js';
 import { CONTRACTS } from '../config/contracts.js';
 import { getWalletAddress, loadEnvConfig } from '../utils/wallet.js';
-import { fetchProjects } from '../utils/api.js';
+import { fetchAllProjects } from '../utils/api.js';
 import { getHuntPrice, huntToUSD } from '../utils/price.js';
 import { formatTokenAmount } from '../utils/format.js';
 import { ERC20_ABI } from '../abi/erc20.js';
@@ -55,8 +55,7 @@ export async function walletCommand(): Promise<void> {
     console.log(`HUNT Balance:   ${huntFormatted} HUNT (${huntUSD})`);
 
     // Get project token balances
-    const projectsResponse = await fetchProjects();
-    const projects = projectsResponse.tokens;
+    const projects = await fetchAllProjects();
     
     console.log('\nProject Tokens:');
     console.log('===============');
@@ -66,7 +65,7 @@ export async function walletCommand(): Promise<void> {
     for (const project of projects) {
       try {
         const balance = await publicClient.readContract({
-          address: project.address as Address,
+          address: project.tokenAddress as Address,
           abi: ERC20_ABI,
           functionName: 'balanceOf',
           args: [walletAddress],

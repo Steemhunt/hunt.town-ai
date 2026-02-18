@@ -6,19 +6,10 @@ import type { Address } from 'viem';
 import { publicClient } from '../config/client.js';
 import { CONTRACTS } from '../config/contracts.js';
 import { MINTPAD_ABI } from '../abi/mintpad.js';
-import { fetchProjects, type TokenData } from '../utils/api.js';
+import { findProjectBySymbol, fetchAllProjects } from '../utils/api.js';
 import { getWalletAddress, loadEnvConfig } from '../utils/wallet.js';
 import { getHuntPrice, huntToUSD } from '../utils/price.js';
 import { formatTokenAmount, formatNumber } from '../utils/format.js';
-
-/**
- * Find project by symbol
- */
-async function findProjectBySymbol(symbol: string): Promise<TokenData | null> {
-  const response = await fetchProjects();
-  const projects = response.tokens;
-  return projects.find(p => p.symbol.toLowerCase() === symbol.toLowerCase()) || null;
-}
 
 interface ClaimableOptions {
   project?: string;
@@ -58,7 +49,7 @@ export async function claimableCommand(options: ClaimableOptions): Promise<void>
         address: CONTRACTS.MINTPAD,
         abi: MINTPAD_ABI,
         functionName: 'getClaimableHunt',
-        args: [walletAddress, project.address as Address],
+        args: [walletAddress, project.tokenAddress as Address],
       });
 
       const [totalHuntToClaim, endDay] = result as readonly [bigint, bigint];
@@ -76,9 +67,8 @@ export async function claimableCommand(options: ClaimableOptions): Promise<void>
 
     } else {
       // Check all projects
-      const projectsResponse = await fetchProjects();
-      const projects = projectsResponse.tokens;
-      const tokenAddresses = projects.map(p => p.address as Address);
+      const projects = await fetchAllProjects();
+      const tokenAddresses = projects.map(p => p.tokenAddress as Address);
 
       const results = await publicClient.readContract({
         address: CONTRACTS.MINTPAD,

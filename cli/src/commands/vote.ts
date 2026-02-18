@@ -5,19 +5,10 @@ import type { Address } from 'viem';
 import { publicClient, createWalletClientForBase } from '../config/client.js';
 import { CONTRACTS } from '../config/contracts.js';
 import { MINTPAD_ABI } from '../abi/mintpad.js';
-import { fetchProjects, type TokenData } from '../utils/api.js';
+import { findProjectBySymbol } from '../utils/api.js';
 import { requireKey } from '../utils/wallet.js';
 import { formatNumber } from '../utils/format.js';
 import { waitForTx, confirmAction } from '../utils/tx.js';
-
-/**
- * Find project by symbol
- */
-async function findProjectBySymbol(symbol: string): Promise<TokenData | null> {
-  const response = await fetchProjects();
-  const projects = response.tokens;
-  return projects.find(p => p.symbol.toLowerCase() === symbol.toLowerCase()) || null;
-}
 
 /**
  * Execute vote command
@@ -103,7 +94,7 @@ export async function voteCommand(symbol: string, amount: string): Promise<void>
       address: CONTRACTS.MINTPAD,
       abi: MINTPAD_ABI,
       functionName: 'vote',
-      args: [project.address as Address, voteAmount as unknown as bigint], // Cast to handle uint32
+      args: [project.tokenAddress as Address, voteAmount as unknown as bigint], // Cast to handle uint32
     });
 
     await waitForTx(hash);

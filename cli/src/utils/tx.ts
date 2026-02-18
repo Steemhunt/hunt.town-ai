@@ -1,7 +1,7 @@
 /**
  * Transaction utilities for write operations
  */
-import { parseEther } from 'viem';
+import { formatEther } from 'viem';
 import type { Address, Hash, WalletClient } from 'viem';
 import { publicClient } from '../config/client.js';
 import { ERC20_ABI } from '../abi/erc20.js';
@@ -84,10 +84,8 @@ export async function checkETHBalance(address: Address, requiredAmount: bigint):
   const balance = await publicClient.getBalance({ address });
   
   if (balance < requiredAmount) {
-    const required = parseEther(requiredAmount.toString());
-    const available = parseEther(balance.toString());
     throw new Error(
-      `Insufficient ETH balance. Required: ${required} ETH, Available: ${available} ETH`
+      `Insufficient ETH balance. Required: ${formatEther(requiredAmount)} ETH, Available: ${formatEther(balance)} ETH`
     );
   }
 }
