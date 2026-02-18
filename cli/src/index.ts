@@ -42,6 +42,7 @@ function run(fn: () => Promise<void>) {
   return async () => {
     try {
       await fn();
+      process.exit(0);
     } catch (e) {
       console.error('❌', cleanError(e));
       process.exit(1);

@@ -24,7 +24,7 @@ const CURVE_CONFIG = {
 } as const;
 
 /** FDV presets in USD — same as mintpad web app */
-const FDV_PRESETS: Record<string, number> = {
+export const FDV_PRESETS: Record<string, number> = {
   small: 1_000,    // $1K initial FDV
   medium: 5_000,   // $5K initial FDV
   large: 30_000,   // $30K initial FDV
@@ -45,7 +45,7 @@ interface CurveResult {
  * Algorithm: multiplier = (1 / (1 - progress * steepness))^exponent
  * This creates a J-curve where early buyers get cheaper prices.
  */
-function generateBondingCurve(
+export function generateBondingCurve(
   maxSupplyWei: bigint,
   initialFdvUsd: number,
   huntPriceUsd: number,

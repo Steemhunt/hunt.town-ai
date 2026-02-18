@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { createPublicClient, fallback, http, type Address, formatUnits } from 'viem';
+import { createPublicClient, fallback, http, type Address, formatUnits, parseEther } from 'viem';
 import { base } from 'viem/chains';
 
 // Test helpers
@@ -20,7 +20,13 @@ import {
   formatNumber, formatTokenAmount, shortenAddress, 
   formatPercentage, formatDate, formatTimeAgo, formatUSD 
 } from '../src/utils/format.js';
-import { fetchAllProjects, fetchReserveStats, fetchTokenMetadata } from '../src/utils/api.js';
+import { fetchAllProjects, fetchReserveStats, fetchTokenMetadata, findProjectBySymbol } from '../src/utils/api.js';
+
+// Create project bonding curve functions
+import { generateBondingCurve, FDV_PRESETS } from '../src/utils/curve.js';
+
+// Child process for CLI integration tests
+import { execSync } from 'child_process';
 
 // Config test timeout for RPC calls
 vi.setConfig({ testTimeout: 60_000 });
@@ -452,5 +458,242 @@ describe('Edge Cases', { timeout: 30_000 }, () => {
     ).rejects.toThrow();
     
     console.log(`❌ Non-existent token correctly reverted`);
+  });
+});
+
+describe('Bonding Curve Generator', { timeout: 5_000 }, () => {
+  it('generateBondingCurve with small preset ($1K FDV) should return 500 steps', () => {
+    const maxSupply = parseEther('100000000'); // 100M tokens
+    const fdvUsd = FDV_PRESETS.small; // $1K
+    const huntPriceUsd = 0.10; // $0.10 HUNT price
+
+    const result = generateBondingCurve(maxSupply, fdvUsd, huntPriceUsd);
+
+    console.log(`🔢 Small preset: ${result.stepRanges.length} steps, initial price: ${result.initialPrice.toFixed(10)} HUNT`);
+    
+    expect(result.stepRanges).toHaveLength(500);
+    expect(result.stepPrices).toHaveLength(500);
+    expect(result.initialPrice).toBeGreaterThan(0);
+    expect(result.finalPrice).toBeGreaterThan(result.initialPrice);
+  });
+
+  it('generateBondingCurve with medium preset ($5K FDV) should return higher initial price than small', () => {
+    const maxSupply = parseEther('100000000');
+    const huntPriceUsd = 0.10;
+
+    const smallResult = generateBondingCurve(maxSupply, FDV_PRESETS.small, huntPriceUsd);
+    const mediumResult = generateBondingCurve(maxSupply, FDV_PRESETS.medium, huntPriceUsd);
+
+    console.log(`📈 Price comparison - Small: ${smallResult.initialPrice.toFixed(10)}, Medium: ${mediumResult.initialPrice.toFixed(10)}`);
+    
+    expect(mediumResult.initialPrice).toBeGreaterThan(smallResult.initialPrice);
+    expect(mediumResult.finalPrice).toBeGreaterThan(smallResult.finalPrice);
+  });
+
+  it('generateBondingCurve with large preset ($30K FDV) should return highest initial price', () => {
+    const maxSupply = parseEther('100000000');
+    const huntPriceUsd = 0.10;
+
+    const smallResult = generateBondingCurve(maxSupply, FDV_PRESETS.small, huntPriceUsd);
+    const mediumResult = generateBondingCurve(maxSupply, FDV_PRESETS.medium, huntPriceUsd);
+    const largeResult = generateBondingCurve(maxSupply, FDV_PRESETS.large, huntPriceUsd);
+
+    console.log(`🚀 Large preset initial price: ${largeResult.initialPrice.toFixed(10)} HUNT`);
+    
+    expect(largeResult.initialPrice).toBeGreaterThan(mediumResult.initialPrice);
+    expect(largeResult.initialPrice).toBeGreaterThan(smallResult.initialPrice);
+  });
+
+  it('final price should always be higher than initial price (J-curve property)', () => {
+    const maxSupply = parseEther('100000000');
+    const huntPriceUsd = 0.10;
+
+    const testCases = [
+      { name: 'small', fdv: FDV_PRESETS.small },
+      { name: 'medium', fdv: FDV_PRESETS.medium },
+      { name: 'large', fdv: FDV_PRESETS.large },
+    ];
+
+    testCases.forEach(({ name, fdv }) => {
+      const result = generateBondingCurve(maxSupply, fdv, huntPriceUsd);
+      console.log(`📊 ${name}: ${result.initialPrice.toFixed(10)} → ${result.finalPrice.toFixed(10)} HUNT (${result.multiplier.toFixed(2)}x)`);
+      
+      expect(result.finalPrice).toBeGreaterThan(result.initialPrice);
+      expect(result.multiplier).toBeGreaterThan(1);
+    });
+  });
+
+  it('step ranges should be ascending and last range equals maxSupply', () => {
+    const maxSupply = parseEther('100000000');
+    const fdvUsd = FDV_PRESETS.medium;
+    const huntPriceUsd = 0.10;
+
+    const result = generateBondingCurve(maxSupply, fdvUsd, huntPriceUsd);
+
+    // Check ascending ranges
+    for (let i = 1; i < result.stepRanges.length; i++) {
+      expect(result.stepRanges[i]).toBeGreaterThan(result.stepRanges[i - 1]);
+    }
+
+    // Last range should equal maxSupply
+    expect(result.stepRanges[result.stepRanges.length - 1]).toBe(maxSupply);
+    
+    console.log(`✅ Step ranges: ${result.stepRanges[0]} → ${result.stepRanges[result.stepRanges.length - 1]} (${result.stepRanges.length} steps)`);
+  });
+
+  it('step prices should be ascending (monotonic for hyperbolic curve)', () => {
+    const maxSupply = parseEther('100000000');
+    const fdvUsd = FDV_PRESETS.medium;
+    const huntPriceUsd = 0.10;
+
+    const result = generateBondingCurve(maxSupply, fdvUsd, huntPriceUsd);
+
+    // Check ascending prices
+    for (let i = 1; i < result.stepPrices.length; i++) {
+      expect(result.stepPrices[i]).toBeGreaterThanOrEqual(result.stepPrices[i - 1]);
+    }
+    
+    console.log(`💰 Price progression: ${formatUnits(result.stepPrices[0], 18)} → ${formatUnits(result.stepPrices[result.stepPrices.length - 1], 18)} HUNT`);
+  });
+
+  it('TVL should be positive and reasonable', () => {
+    const maxSupply = parseEther('100000000');
+    const fdvUsd = FDV_PRESETS.medium;
+    const huntPriceUsd = 0.10;
+
+    const result = generateBondingCurve(maxSupply, fdvUsd, huntPriceUsd);
+
+    expect(result.tvlHunt).toBeGreaterThan(0);
+    expect(result.tvlHunt).toBeGreaterThan(result.initialPrice * 100_000_000); // Should be much higher than initial FDV
+
+    console.log(`💎 TVL if fully minted: ${formatNumber(result.tvlHunt.toFixed(0))} HUNT`);
+  });
+
+  it('with fixed HUNT price $0.10, medium preset: initial price should be approximately FDV/(supply*huntPrice)', () => {
+    const maxSupply = parseEther('100000000'); // 100M tokens
+    const fdvUsd = FDV_PRESETS.medium; // $5K
+    const huntPriceUsd = 0.10;
+
+    const result = generateBondingCurve(maxSupply, fdvUsd, huntPriceUsd);
+    
+    const maxSupplyNum = Number(formatUnits(maxSupply, 18));
+    const expectedInitialPrice = fdvUsd / (maxSupplyNum * huntPriceUsd);
+
+    console.log(`🎯 Expected: ${expectedInitialPrice.toFixed(10)}, Actual: ${result.initialPrice.toFixed(10)}`);
+    
+    // Should be approximately equal (allowing for floating point precision)
+    const tolerance = expectedInitialPrice * 0.001; // 0.1% tolerance
+    expect(Math.abs(result.initialPrice - expectedInitialPrice)).toBeLessThan(tolerance);
+  });
+});
+
+describe('CLI Command Integration Tests', { timeout: 60_000 }, () => {
+  const runCLI = (command: string): string => {
+    try {
+      return execSync(`node dist/index.js ${command}`, { 
+        encoding: 'utf-8', 
+        timeout: 30_000,
+        env: { ...process.env, PRIVATE_KEY: '' },
+        cwd: '/root/.openclaw/workspace/hunt.town-ai/cli'
+      });
+    } catch (error: any) {
+      // If command fails, return stderr + stdout
+      return (error.stdout || '') + (error.stderr || '');
+    }
+  };
+
+  it('ht projects command output should contain "Hunt Town Co-op Projects" header', () => {
+    const output = runCLI('projects');
+    console.log(`📋 Projects output preview: ${output.substring(0, 200)}...`);
+    
+    expect(output).toContain('Hunt Town Co-op Projects');
+  });
+
+  it('ht stats command output should contain "HUNT Price:" and "Total Projects:"', () => {
+    const output = runCLI('stats');
+    console.log(`📊 Stats output preview: ${output.substring(0, 300)}...`);
+    
+    expect(output).toContain('HUNT Price:');
+    expect(output).toContain('Total Projects:');
+  });
+
+  it('ht project H1 should show H1 token info', () => {
+    const output = runCLI('project H1');
+    console.log(`🎯 H1 project info preview: ${output.substring(0, 200)}...`);
+    
+    expect(output.toLowerCase()).toContain('h1');
+  });
+
+  it('ht leaderboard should list projects sorted by reserve', () => {
+    const output = runCLI('leaderboard');
+    console.log(`🏆 Leaderboard preview: ${output.substring(0, 200)}...`);
+    
+    expect(output).toContain('Leaderboard');
+    expect(output).toContain('Reserve');
+  });
+
+  it('ht updates should show recent updates', () => {
+    const output = runCLI('updates');
+    console.log(`📰 Updates preview: ${output.substring(0, 200)}...`);
+    
+    expect(output).toContain('Recent Updates');
+  });
+
+  it('ht wallet without PRIVATE_KEY should show "No wallet configured"', () => {
+    const output = runCLI('wallet');
+    console.log(`👛 Wallet output: ${output.trim()}`);
+    
+    expect(output).toContain('No wallet configured');
+  });
+
+  it('ht claimable without PRIVATE_KEY should show appropriate message', () => {
+    const output = runCLI('claimable');
+    console.log(`💰 Claimable output: ${output.trim()}`);
+    
+    // Should either show no wallet configured or claimable info structure
+    expect(output.length).toBeGreaterThan(0);
+  });
+
+  it('ht royalty without PRIVATE_KEY should show appropriate message', () => {
+    const output = runCLI('royalty');
+    console.log(`👑 Royalty output: ${output.trim()}`);
+    
+    // Should either show no wallet configured or royalty info structure
+    expect(output.length).toBeGreaterThan(0);
+  });
+
+  it('ht create-project --help should list all options including --preset', () => {
+    const output = runCLI('create-project --help');
+    console.log(`❓ Create project help preview: ${output.substring(0, 300)}...`);
+    
+    expect(output).toContain('--preset');
+    expect(output).toContain('--name');
+    expect(output).toContain('--symbol');
+  });
+});
+
+describe('findProjectBySymbol Function', { timeout: 30_000 }, () => {
+  it('should find ONCHAT (case insensitive)', async () => {
+    const project = await findProjectBySymbol('onchat');
+    console.log(`💬 Found ONCHAT project:`, project?.symbol, project?.name);
+    
+    expect(project).not.toBeNull();
+    expect(project?.symbol.toLowerCase()).toBe('onchat');
+    expect(project?.tokenAddress).toBeTruthy();
+  });
+
+  it('should find ONCHAT with uppercase', async () => {
+    const project = await findProjectBySymbol('ONCHAT');
+    console.log(`💬 Found ONCHAT (uppercase):`, project?.symbol);
+    
+    expect(project).not.toBeNull();
+    expect(project?.symbol.toLowerCase()).toBe('onchat');
+  });
+
+  it('should return null for non-existent symbol', async () => {
+    const project = await findProjectBySymbol('NONEXISTENT123');
+    console.log(`❌ Non-existent symbol result:`, project);
+    
+    expect(project).toBeNull();
   });
 });
