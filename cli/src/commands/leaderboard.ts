@@ -1,57 +1,43 @@
 /**
- * Show Hunt Town Co-op leaderboard - top projects by TVL
+ * Top Co-op projects ranked by HUNT reserve (TVL)
  */
-import { fetchProjects, type TokenData } from '../utils/api';
-import { formatNumber } from '../utils/format';
+import { fetchAllProjects } from '../utils/api.js';
+import { formatNumber } from '../utils/format.js';
+import { getHuntPrice, huntToUSD } from '../utils/price.js';
 
 /**
- * Execute leaderboard command
+ * Execute `ht leaderboard` command
  */
-export async function leaderboardCommand(options: { limit?: number } = {}): Promise<void> {
-  const limit = options.limit || 10;
-  
-  console.log(`Hunt Town Co-op Leaderboard — Top ${limit} Projects by TVL`);
-  console.log('============================================================\n');
+export async function leaderboardCommand(options: { limit?: string }): Promise<void> {
+  const limit = parseInt(options.limit || '20', 10);
 
-  try {
-    const response = await fetchProjects();
-    const projects = response.tokens;
+  const [projects, huntPrice] = await Promise.all([
+    fetchAllProjects(),
+    getHuntPrice(),
+  ]);
 
-    if (projects.length === 0) {
-      console.log('No projects found.');
-      return;
-    }
+  projects.sort((a, b) => b.reserveBalance - a.reserveBalance);
+  const top = projects.slice(0, limit);
+  const totalReserve = projects.reduce((sum, p) => sum + p.reserveBalance, 0);
 
-    // Sort by reserve balance descending and take top N
-    const topProjects = projects
-      .sort((a, b) => (b.reserveBalance || 0) - (a.reserveBalance || 0))
-      .slice(0, limit);
+  console.log('Hunt Town Co-op Leaderboard');
+  console.log('===========================\n');
 
-    // Display header
-    console.log('Rank Symbol     TVL (HUNT)      ');
-    console.log('---- --------   ---------------');
+  console.log(' #  Symbol          Reserve (HUNT)        USD Value     Share');
+  console.log('--- ----------   -----------------   ---------------   ------');
 
-    // Display leaderboard
-    topProjects.forEach((project, index) => {
-      const rank = (index + 1).toString().padStart(2, ' ');
-      const symbol = project.symbol.padEnd(8, ' ');
-      const tvl = formatNumber(project.reserveBalance || 0).padStart(13, ' ');
+  top.forEach((p, i) => {
+    const num = String(i + 1).padStart(2);
+    const sym = p.symbol.padEnd(10);
+    const reserve = formatNumber(p.reserveBalance.toFixed(2)).padStart(17);
+    const usd = huntToUSD(p.reserveBalance, huntPrice).padStart(15);
+    const share = totalReserve > 0
+      ? ((p.reserveBalance / totalReserve) * 100).toFixed(2) + '%'
+      : '0.00%';
+    console.log(`${num}  ${sym}   ${reserve}   ${usd}   ${share.padStart(6)}`);
+  });
 
-      console.log(`  ${rank}  ${symbol}   ${tvl}`);
-    });
-
-    // Display totals
-    const totalTVL = topProjects.reduce((sum, p) => sum + (p.reserveBalance || 0), 0);
-
-    console.log('\n' + '─'.repeat(40));
-    console.log(`Total (top ${limit}): ${formatNumber(totalTVL)} HUNT`);
-    
-    if (projects.length > limit) {
-      console.log(`\nShowing top ${limit} of ${projects.length} total projects.`);
-    }
-
-  } catch (error) {
-    console.error('Error fetching leaderboard:', error);
-    process.exit(1);
-  }
+  console.log('');
+  console.log(`Showing top ${top.length} of ${projects.length} projects`);
+  console.log(`Total HUNT locked: ${formatNumber(totalReserve.toFixed(0))} (${huntToUSD(totalReserve, huntPrice)})`);
 }

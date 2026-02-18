@@ -5,7 +5,10 @@
  * The aggregator returns weightedRate in USDC units (6 decimals) per 1 HUNT (18 decimals).
  * Price in USD = weightedRate / 1e6
  */
-import { formatNumber } from './format';
+import { publicClient } from '../config/client.js';
+import { CONTRACTS } from '../config/contracts.js';
+import { SPOT_PRICE_ABI } from '../abi/spot-price.js';
+import { formatNumber } from './format.js';
 
 let cachedPrice: { value: number; timestamp: number } | null = null;
 const CACHE_TTL_MS = 60_000; // 1 minute
@@ -19,12 +22,19 @@ export async function getHuntPrice(): Promise<number> {
   }
 
   try {
-    // For now, use placeholder price until contract integration is complete
-    const price = 0.000136; // Placeholder HUNT price
+    const weightedRate = await publicClient.readContract({
+      address: CONTRACTS.SPOT_PRICE_AGGREGATOR,
+      abi: SPOT_PRICE_ABI,
+      functionName: 'getRate',
+      args: [CONTRACTS.HUNT, CONTRACTS.USDC, false],
+    });
+
+    // weightedRate is USDC (6 decimals) per HUNT (18 decimals) -> divide by 1e6
+    const price = Number(weightedRate) / 1_000_000;
     cachedPrice = { value: price, timestamp: Date.now() };
     return price;
   } catch {
-    return cachedPrice?.value ?? 0.000136;
+    return cachedPrice?.value ?? 0;
   }
 }
 
