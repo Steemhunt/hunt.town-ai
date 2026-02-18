@@ -13,12 +13,12 @@ import type { Address } from 'viem';
  */
 export function loadEnvConfig(): void {
   // Load from local .env first
-  config();
+  config({ quiet: true });
   
   // Load from ~/.hunttown/.env if it exists
   const huntTownConfigPath = join(homedir(), '.hunttown', '.env');
   if (existsSync(huntTownConfigPath)) {
-    config({ path: huntTownConfigPath });
+    config({ path: huntTownConfigPath, quiet: true });
   }
 }
 

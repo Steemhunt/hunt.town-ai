@@ -9,16 +9,18 @@
   "scripts": {
     "build": "bash build.sh && chmod +x dist/index.js",
     "typecheck": "tsc --noEmit",
-    "dev": "tsc --watch --noEmit"
+    "dev": "tsc --watch --noEmit",
+    "test": "npx vitest run test/cli.test.ts"
   },
   "dependencies": {
-    "commander": "^13.1.0",
-    "dotenv": "^16.4.7",
-    "viem": "^2.23.2"
+    "commander": "^14.0.3",
+    "dotenv": "^17.3.1",
+    "viem": "^2.46.2"
   },
   "devDependencies": {
-    "typescript": "^5.7.3",
-    "@types/node": "^22.0.0"
+    "@types/node": "^25.2.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   },
   "license": "MIT"
 }

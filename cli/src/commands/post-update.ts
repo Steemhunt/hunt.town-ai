@@ -1,8 +1,16 @@
 /**
  * Post a builder update for a Hunt Town project (burns HUNT)
  */
-import { fetchProjects, type TokenData } from '../utils/api';
-import { requireKey, getWalletAddress } from '../utils/wallet';
+import { parseEther } from 'viem';
+import type { Address } from 'viem';
+import { publicClient, createWalletClientForBase } from '../config/client.js';
+import { CONTRACTS } from '../config/contracts.js';
+import { PROJECT_UPDATES_ABI } from '../abi/project-updates.js';
+import { fetchProjects, type TokenData } from '../utils/api.js';
+import { requireKey, getWalletAddress } from '../utils/wallet.js';
+import { formatTokenAmount } from '../utils/format.js';
+import { ensureApproval, waitForTx, confirmAction } from '../utils/tx.js';
+import { getHuntPrice, huntToUSD } from '../utils/price.js';
 
 /**
  * Find project by symbol
@@ -39,11 +47,13 @@ export async function postUpdateCommand(symbol: string, link: string): Promise<v
       process.exit(1);
     }
 
-    // Get private key and wallet address
+    // Get private key and create wallet client
     const privateKey = requireKey();
-    const walletAddress = getWalletAddress(privateKey);
+    const walletClient = createWalletClientForBase(privateKey);
+    const walletAddress = walletClient.account?.address;
+    
     if (!walletAddress) {
-      console.error('Invalid private key.');
+      console.error('Could not get wallet address from private key.');
       process.exit(1);
     }
 
@@ -54,12 +64,54 @@ export async function postUpdateCommand(symbol: string, link: string): Promise<v
       process.exit(1);
     }
 
+    // Get price per update from contract
+    const pricePerUpdate = await publicClient.readContract({
+      address: CONTRACTS.PROJECT_UPDATES,
+      abi: PROJECT_UPDATES_ABI,
+      functionName: 'pricePerUpdate',
+    });
+
+    const huntPrice = await getHuntPrice();
+    const priceFormatted = formatTokenAmount(pricePerUpdate, 18, 0);
+    const priceUSD = huntToUSD(Number(priceFormatted.replace(/,/g, '')), huntPrice);
+
     console.log(`Project:        ${project.name} (${project.symbol})`);
     console.log(`Update Link:    ${link}`);
+    console.log(`Cost:           ${priceFormatted} HUNT (${priceUSD})`);
     console.log(`Your Address:   ${walletAddress}\n`);
 
-    console.log('⚠️  Smart contract integration needed to complete this operation.');
-    console.log('   This would burn HUNT tokens and post your update on-chain.');
+    // Confirm the action
+    const confirmed = await confirmAction(
+      `This will burn ${priceFormatted} HUNT tokens to post your update.`
+    );
+    
+    if (!confirmed) {
+      console.log('Operation cancelled.');
+      return;
+    }
+
+    // Ensure HUNT approval for PROJECT_UPDATES contract
+    await ensureApproval(
+      walletClient,
+      CONTRACTS.HUNT,
+      CONTRACTS.PROJECT_UPDATES,
+      pricePerUpdate
+    );
+
+    // Post the update
+    console.log('📝 Posting project update...');
+    const hash = await walletClient.writeContract({
+      address: CONTRACTS.PROJECT_UPDATES,
+      abi: PROJECT_UPDATES_ABI,
+      functionName: 'postUpdate',
+      args: [project.address as Address, link],
+    });
+
+    await waitForTx(hash);
+    
+    console.log(`\n🎉 Project update posted successfully!`);
+    console.log(`   ${priceFormatted} HUNT burned`);
+    console.log(`   View on Base: https://basescan.org/tx/${hash}`);
 
   } catch (error: any) {
     console.error('Error posting update:', error.message || error);
