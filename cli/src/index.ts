@@ -127,13 +127,15 @@ cli
 
 cli
   .command('create-project')
-  .description('Create a new Co-op project')
+  .description('Create a new Co-op project with auto-generated bonding curve')
   .requiredOption('--name <name>', 'Project name')
   .requiredOption('--symbol <symbol>', 'Token symbol (max 11 chars)')
-  .requiredOption('--max-supply <amount>', 'Maximum token supply')
-  .requiredOption('--mint-royalty <bp>', 'Mint royalty in basis points (0-10000)')
-  .requiredOption('--burn-royalty <bp>', 'Burn royalty in basis points (0-10000)')
-  .requiredOption('--steps <json>', 'Price steps JSON: {"ranges":["1000","5000"],"prices":["0.01","0.02"]}')
+  .option('--max-supply <amount>', 'Maximum token supply (default: 100000000)')
+  .option('--mint-royalty <bp>', 'Mint royalty in basis points (default: 100 = 1%)')
+  .option('--burn-royalty <bp>', 'Burn royalty in basis points (default: 100 = 1%)')
+  .option('--preset <size>', 'Curve preset: small ($1K FDV), medium ($5K), large ($30K)')
+  .option('--fdv <usd>', 'Custom initial FDV target in USD')
+  .option('--steps <json>', 'Manual price steps JSON (overrides preset/fdv)')
   .action((opts) => run(() => createProjectCommand(opts))());
 
 cli

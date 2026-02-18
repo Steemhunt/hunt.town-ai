@@ -44,9 +44,13 @@ ht claim-royalty                     # Claim accumulated HUNT royalties from Bon
 # Builder Operations
 ht post-update <symbol> <link>       # Post a project update (burns HUNT)
 
-# Project Creation
-ht create-project --name "My Project" --symbol MYP --max-supply 1000000 \
-  --mint-royalty 100 --burn-royalty 100 --steps '[{"range":"500000","price":"0.001"},{"range":"1000000","price":"0.01"}]'
+# Project Creation (auto-generated hyperbolic bonding curve)
+ht create-project --name "My Project" --symbol MYP                       # medium preset ($5K FDV), 100M supply, 1% royalty
+ht create-project --name "My Project" --symbol MYP --preset small        # $1K initial FDV
+ht create-project --name "My Project" --symbol MYP --preset large        # $30K initial FDV
+ht create-project --name "My Project" --symbol MYP --fdv 10000           # custom $10K FDV target
+ht create-project --name "My Project" --symbol MYP --max-supply 50000000 # 50M supply instead of 100M
+ht create-project --name "My Project" --symbol MYP --mint-royalty 200 --burn-royalty 200  # 2% royalties
 
 # Buy tokens with ETH or USDC via Zap
 ht zap-mint <symbol> <amount>                # Buy tokens with ETH (default)
