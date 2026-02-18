@@ -35,7 +35,7 @@ Hunt Town is the first onchain cooperative (Co-op) model for Web3 builders and b
 |---------|-------------|---------|
 | [`cli/`](./cli) | `ht` command-line tool — 14 commands for full Co-op participation | `npm install -g hunt.town-cli` |
 | [`mcp/`](./mcp) | MCP server — exposes Co-op tools to AI assistants (Claude, Cursor, etc.) | `npm install -g hunttown-mcp` |
-| [`agent-skills/`](./agent-skills) | Agent skill file — teach any AI agent to use the `ht` CLI | — |
+| [`agent-skills/`](./agent-skills) | Agent skill file — teach any AI agent to use the `ht` CLI | `clawhub install hunttown` |
 
 ## Quick Start
 
