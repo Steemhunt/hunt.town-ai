@@ -1,11 +1,17 @@
 <p align="center">
-  <img src="https://hunt.town/images/logo.svg" width="80" alt="Hunt Town" />
+  <img src="https://hunt.town/hunt-town-transparent.svg" width="80" alt="Hunt Town" />
 </p>
 
 <h1 align="center">hunt.town-ai</h1>
 
 <p align="center">
   AI-friendly tools for <a href="https://hunt.town">Hunt Town</a> — the first onchain cooperative on Base
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/hunt.town-cli"><img src="https://img.shields.io/npm/v/hunt.town-cli?label=hunt.town-cli" alt="npm CLI" /></a>
+  <a href="https://www.npmjs.com/package/hunttown-mcp"><img src="https://img.shields.io/npm/v/hunttown-mcp?label=hunttown-mcp" alt="npm MCP" /></a>
+  <a href="https://github.com/Steemhunt/hunt.town-ai/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Steemhunt/hunt.town-ai" alt="License" /></a>
 </p>
 
 <p align="center">
@@ -25,10 +31,10 @@ Hunt Town is the first onchain cooperative (Co-op) model for Web3 builders and b
 
 ## Packages
 
-| Package | Description | npm |
-|---------|-------------|-----|
-| [`cli/`](./cli) | `ht` command-line tool — 14 commands for full Co-op participation | `hunt.town-cli` |
-| [`mcp/`](./mcp) | MCP server — exposes Co-op tools to AI assistants (Claude, Cursor, etc.) | `hunttown-mcp` |
+| Package | Description | Install |
+|---------|-------------|---------|
+| [`cli/`](./cli) | `ht` command-line tool — 14 commands for full Co-op participation | `npm install -g hunt.town-cli` |
+| [`mcp/`](./mcp) | MCP server — exposes Co-op tools to AI assistants (Claude, Cursor, etc.) | `npm install -g hunttown-mcp` |
 | [`agent-skills/`](./agent-skills) | Agent skill file — teach any AI agent to use the `ht` CLI | — |
 
 ## Quick Start
@@ -41,6 +47,7 @@ npm install -g hunt.town-cli
 ht projects          # List all projects
 ht stats             # Co-op overview
 ht project ONCHAT    # Detailed project info
+ht leaderboard       # Top projects by TVL
 
 # Set up wallet for write operations
 mkdir -p ~/.hunttown
@@ -51,6 +58,7 @@ ht vote ONCHAT 10    # Vote on a project
 ht claimable         # Check voting rewards
 ht claim ONCHAT      # Claim rewards
 ht royalty           # Check bonding curve royalties
+ht claim-royalty     # Claim royalties
 ```
 
 ## CLI Commands
@@ -79,6 +87,17 @@ ht royalty           # Check bonding curve royalties
 | `ht create-project` | Create a new Co-op project |
 | `ht zap-mint <symbol> <amount>` | Buy tokens with ETH/USDC |
 
+### Create Project with Bonding Curve Presets
+
+```bash
+ht create-project --name "My Project" --symbol MYP                  # medium preset ($5K FDV)
+ht create-project --name "My Project" --symbol MYP --preset small   # $1K initial FDV
+ht create-project --name "My Project" --symbol MYP --preset large   # $30K initial FDV
+ht create-project --name "My Project" --symbol MYP --fdv 10000      # custom FDV target
+```
+
+Auto-generates a hyperbolic bonding curve (500 steps, same algorithm as the Hunt Town web app). Defaults: 100M supply, 1% mint/burn royalty.
+
 ## MCP Server
 
 ```bash
@@ -96,6 +115,8 @@ Add to your MCP client config:
   }
 }
 ```
+
+14 tools matching all CLI commands. See [`mcp/README.md`](./mcp/README.md) for details.
 
 ## Agent Skill
 
@@ -125,11 +146,11 @@ All on **Base** (chain 8453):
 
 | Contract | Address |
 |----------|---------|
-| HUNT Token | `0x37f0c2915CeCC7e977183B8543Fc0864d03E064C` |
-| MCV2_Bond | `0xc5a076cad94176c2996B32d8466Be1cE757FAa27` |
-| Mintpad | `0xfb51D2120c27bB56D91221042cb2dd2866a647fE` |
-| ProjectUpdates | `0xdD066121E4488edB73c4Ff7f461592c084e4303A` |
-| ZapUniV4MCV2 | `0xa2e7BcA51A84Ed635909a8E845d5f66602742A75` |
+| HUNT Token | [`0x37f0c2915CeCC7e977183B8543Fc0864d03E064C`](https://basescan.org/address/0x37f0c2915CeCC7e977183B8543Fc0864d03E064C) |
+| MCV2_Bond | [`0xc5a076cad94176c2996B32d8466Be1cE757FAa27`](https://basescan.org/address/0xc5a076cad94176c2996B32d8466Be1cE757FAa27) |
+| Mintpad | [`0xfb51D2120c27bB56D91221042cb2dd2866a647fE`](https://basescan.org/address/0xfb51D2120c27bB56D91221042cb2dd2866a647fE) |
+| ProjectUpdates | [`0xdD066121E4488edB73c4Ff7f461592c084e4303A`](https://basescan.org/address/0xdD066121E4488edB73c4Ff7f461592c084e4303A) |
+| ZapUniV4MCV2 | [`0xa2e7BcA51A84Ed635909a8E845d5f66602742A75`](https://basescan.org/address/0xa2e7BcA51A84Ed635909a8E845d5f66602742A75) |
 
 ## License
 
