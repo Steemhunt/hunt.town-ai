@@ -1,7 +1,7 @@
 /**
  * Transaction utilities for write operations
  */
-import { formatEther } from 'viem';
+import { formatEther, maxUint256 } from 'viem';
 import type { Address, Hash, WalletClient } from 'viem';
 import { publicClient } from '../config/client.js';
 import { ERC20_ABI } from '../abi/erc20.js';
@@ -38,7 +38,7 @@ export async function ensureApproval(
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: 'approve',
-    args: [spenderAddress, amount],
+    args: [spenderAddress, maxUint256],
   });
 
   await waitForTx(hash);
