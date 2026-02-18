@@ -1,41 +1,67 @@
 /**
- * Show Hunt Town Co-op statistics and overview
+ * Hunt Town Co-op overview statistics
  */
-import { fetchProjects, fetchReserveStats } from '../utils/api';
-import { formatNumber } from '../utils/format';
+import { publicClient } from '../config/client.js';
+import { CONTRACTS } from '../config/contracts.js';
+import { MINTPAD_ABI } from '../abi/mintpad.js';
+import { fetchReserveStats } from '../utils/api.js';
+import { formatNumber, formatTokenAmount } from '../utils/format.js';
+import { getHuntPrice, huntToUSD } from '../utils/price.js';
 
 /**
- * Execute stats command
+ * Execute `ht stats` command
  */
 export async function statsCommand(): Promise<void> {
+  const [huntPrice, reserveStats, currentDay, dailyReward] = await Promise.all([
+    getHuntPrice(),
+    fetchReserveStats(),
+    publicClient.readContract({
+      address: CONTRACTS.MINTPAD,
+      abi: MINTPAD_ABI,
+      functionName: 'getCurrentDay',
+    }).catch(() => 0n),
+    publicClient.readContract({
+      address: CONTRACTS.MINTPAD,
+      abi: MINTPAD_ABI,
+      functionName: 'dailyHuntReward',
+    }).catch(() => 0n),
+  ]);
+
+  const day = Number(currentDay);
+
+  // Get today's stats
+  const todayStats = day > 0
+    ? await publicClient.readContract({
+        address: CONTRACTS.MINTPAD,
+        abi: MINTPAD_ABI,
+        functionName: 'dailyStats',
+        args: [currentDay as bigint],
+      }).catch(() => null)
+    : null;
+
   console.log('Hunt Town Co-op Stats');
   console.log('=====================\n');
 
-  try {
-    const [projectsResponse, reserveStats] = await Promise.all([
-      fetchProjects(),
-      fetchReserveStats()
-    ]);
+  console.log(`HUNT Price:         $${huntPrice.toFixed(6)}`);
+  console.log(`Total Projects:     ${formatNumber(reserveStats.projectCount)}`);
+  console.log(`HUNT in Co-op:      ${formatNumber(reserveStats.totalHuntLocked.toFixed(0))} (${huntToUSD(reserveStats.totalHuntLocked, huntPrice)})`);
 
-    const projects = projectsResponse.tokens;
-    
-    // Calculate total HUNT locked
-    const totalHuntLocked = projects.reduce((sum, p) => sum + (p.reserveBalance || 0), 0);
-    
-    console.log(`HUNT Price:         $0.000136 (placeholder)`);
-    console.log(`Total Projects:     ${formatNumber(projects.length)}`);
-    console.log(`HUNT in Co-op:      ${formatNumber(totalHuntLocked)} HUNT`);
-    console.log(`Daily Reward Pool:  TBD`);
-    console.log(`Current Day:        TBD`);
+  if (dailyReward > 0n) {
+    console.log(`Daily Reward Pool:  ${formatTokenAmount(dailyReward as bigint, 18, 0)} HUNT`);
+  }
 
-    console.log('\nToday\'s Activity:');
-    console.log('  Voting Points:    TBD');
-    console.log('  Votes:            TBD');
-    console.log('  Claims:           TBD');
-    console.log('  HUNT Claimed:     TBD');
+  if (day > 0) {
+    console.log(`Current Day:        ${formatNumber(day)}`);
+  }
 
-  } catch (error) {
-    console.error('Error fetching co-op stats:', error);
-    process.exit(1);
+  if (todayStats) {
+    const [vpGiven, vpSpent, votes, claims, huntClaimed] = todayStats as readonly [number, number, number, number, bigint];
+    console.log(`\nToday's Activity:`);
+    console.log(`  Voting Points:    ${formatNumber(Number(vpGiven))} given / ${formatNumber(Number(vpSpent))} spent`);
+    console.log(`  Votes:            ${formatNumber(Number(votes))}`);
+    console.log(`  Claims:           ${formatNumber(Number(claims))}`);
+    if (huntClaimed > 0n) {
+      console.log(`  HUNT Claimed:     ${formatTokenAmount(huntClaimed, 18, 0)}`);
+    }
   }
 }
