@@ -20,6 +20,7 @@ import { claimCommand } from './commands/claim.js';
 import { royaltyCommand } from './commands/royalty.js';
 import { claimRoyaltyCommand } from './commands/claim-royalty.js';
 import { createProjectCommand } from './commands/create-project.js';
+import { topVotedCommand } from './commands/top-voted.js';
 import { zapMintCommand } from './commands/zap-mint.js';
 
 // Load env from ~/.hunttown/.env and local .env
@@ -64,7 +65,8 @@ cli
   .command('project')
   .description('Show detailed project information')
   .argument('<symbol>', 'Project token symbol (e.g. ONCHAT, H1)')
-  .action((symbol) => run(() => projectCommand(symbol))());
+  .option('--votes', 'Include voting stats (today/week/month)')
+  .action((symbol, opts) => run(() => projectCommand(symbol, opts))());
 
 cli
   .command('updates')
@@ -82,6 +84,13 @@ cli
   .description('Top projects by HUNT reserve (TVL)')
   .option('-n, --limit <n>', 'Number of projects to show', '20')
   .action((opts) => run(() => leaderboardCommand(opts))());
+
+cli
+  .command('top-voted')
+  .description('Top voted projects by on-chain voting activity')
+  .option('-p, --period <period>', 'Time period: today, week, or month', 'today')
+  .option('-n, --limit <n>', 'Number of projects to show', '20')
+  .action((opts) => run(() => topVotedCommand(opts))());
 
 cli
   .command('wallet')
