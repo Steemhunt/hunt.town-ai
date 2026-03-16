@@ -52,25 +52,6 @@ Hunt Town Co-op Projects
 Total: 21 projects | 3,583,506 HUNT locked
 ```
 
-#### `ht project <symbol>`
-Show detailed information for a specific project.
-
-```bash
-ht project ONCHAT
-```
-
-```
-ONCHAT — Hunt Town Co-op
-========================
-
-Token Address:  0xD8F76...Da301
-Name:           ONCHAT
-Symbol:         ONCHAT
-Reserve:        123,827.45 HUNT
-Price:          0.03243 HUNT per token
-Website:        https://onchat.sebayaki.com
-```
-
 #### `ht stats`
 Display Hunt Town Co-op overview and statistics.
 
@@ -100,6 +81,50 @@ Show top projects by Total Value Locked (TVL).
 
 ```bash
 ht leaderboard --limit 5
+```
+
+#### `ht top-voted [--period <period>] [--limit <n>]`
+Show top voted projects by on-chain voting activity. Fetches `Voted` events from the Mintpad contract.
+
+```bash
+ht top-voted                    # Today's top voted (default)
+ht top-voted --period week      # This week (needs fast RPC)
+ht top-voted --period month     # This month (needs fast RPC)
+ht top-voted -n 10              # Top 10 only
+```
+
+```
+Today's Top Voted Projects
+========================================
+
+ #  Symbol          Votes   Backers   Reserve (HUNT)         USD
+--- ----------   --------   -------   ----------------   -----------
+ 1  SIGNET        873,473    50,100             83,561     $8,435.78
+ 2  H1            418,914        22              9,359       $944.87
+ 3  DR            280,025        34             51,468     $5,195.88
+...
+
+Period: Today | Total votes: 1,868,590 | Unique backers: 50,209
+```
+
+> **Note:** `week` and `month` periods scan many blocks and may be slow on free public RPCs. Set `RPC_URL` to a dedicated endpoint for best performance.
+
+#### `ht project <symbol> [--votes]`
+Show detailed information for a specific project. Add `--votes` to include voting stats.
+
+```bash
+ht project H1 --votes
+```
+
+```
+H1 — Hunt Town Co-op
+========================
+...
+Voting Stats:
+────────────────────────────────────────
+  Today:    117,905 votes from 12 backers
+  30 Days:  3,586,140 votes from 444 backers (API)
+  Today Rank: #1 of 15 voted projects
 ```
 
 #### `ht updates [--project <symbol>]`

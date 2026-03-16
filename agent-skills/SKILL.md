@@ -20,9 +20,14 @@ echo "PRIVATE_KEY=0x..." > ~/.hunttown/.env
 ```bash
 ht projects                          # List all Co-op projects (symbol, reserve, price)
 ht project <symbol>                  # Detailed project info (price, supply, royalties, updates)
+ht project <symbol> --votes          # Include voting stats (today on-chain + 30-day API + rank)
 ht stats                             # Co-op overview (HUNT price, TVL, daily rewards, voting activity)
 ht leaderboard                       # Top projects ranked by HUNT reserve (TVL)
 ht leaderboard -n 10                 # Show top 10 only
+ht top-voted                         # Today's top voted projects (on-chain Voted events)
+ht top-voted --period week           # This week's top voted (needs fast RPC)
+ht top-voted --period month          # This month's top voted (needs fast RPC)
+ht top-voted -n 10                   # Show top 10 only
 ht updates                           # Recent builder updates across all projects
 ht updates -p <symbol>               # Updates for a specific project
 ht wallet                            # Wallet balances (ETH, HUNT, project tokens, USD values)
@@ -67,7 +72,7 @@ Use project symbols directly: `H1`, `ONCHAT`, `SIGNET`, `MT`, `HUNT`, etc.
 | Variable | Description |
 |----------|-------------|
 | `PRIVATE_KEY` | Wallet private key (stored in `~/.hunttown/.env`) |
-| `RPC_URL` | Custom Base RPC endpoint (optional, uses public RPCs by default) |
+| `RPC_URL` | Custom Base RPC endpoint (optional, uses public RPCs by default). Recommended for `top-voted --period week/month` |
 
 ## Notes
 

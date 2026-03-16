@@ -1,6 +1,6 @@
 {
   "name": "hunt.town-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI for Hunt Town Co-op — the first onchain cooperative for AI and human builders",
   "main": "dist/index.js",
   "bin": {
