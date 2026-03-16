@@ -73,17 +73,17 @@ async function fetchTokenPage(page: number = 1): Promise<TokenListResponse> {
  * Fetch all Hunt Town Co-op projects (handles pagination)
  */
 export async function fetchAllProjects(): Promise<TokenData[]> {
-  const allTokens: TokenData[] = [];
-  let page = 1;
-
-  while (true) {
-    const result = await fetchTokenPage(page);
-    allTokens.push(...result.tokens);
-    if (allTokens.length >= result.count || result.tokens.length < ITEMS_PER_PAGE) break;
-    page++;
+  const first = await fetchTokenPage(1);
+  if (first.tokens.length >= first.count || first.tokens.length < ITEMS_PER_PAGE) {
+    return first.tokens;
   }
 
-  return allTokens;
+  const totalPages = Math.ceil(first.count / ITEMS_PER_PAGE);
+  const remaining = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) => fetchTokenPage(i + 2)),
+  );
+
+  return [first.tokens, ...remaining.map((r) => r.tokens)].flat();
 }
 
 /**

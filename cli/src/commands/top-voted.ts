@@ -1,16 +1,16 @@
 /**
  * Top voted Co-op projects — aggregated from on-chain Voted events
  */
-import { parseAbiItem } from 'viem';
-import { publicClient, logsClient } from '../config/client.js';
-import { CONTRACTS } from '../config/contracts.js';
-import { MINTPAD_ABI } from '../abi/mintpad.js';
-import { fetchAllProjects } from '../utils/api.js';
-import { formatNumber } from '../utils/format.js';
-import { getHuntPrice, huntToUSD } from '../utils/price.js';
+import { parseAbiItem } from "viem";
+import { publicClient } from "../config/client.js";
+import { CONTRACTS } from "../config/contracts.js";
+import { MINTPAD_ABI } from "../abi/mintpad.js";
+import { fetchAllProjects } from "../utils/api.js";
+import { formatNumber } from "../utils/format.js";
+import { getHuntPrice, huntToUSD } from "../utils/price.js";
 
 const VOTED_EVENT = parseAbiItem(
-  'event Voted(uint256 indexed day, address indexed user, address indexed token, uint32 voteAmount)'
+  "event Voted(uint256 indexed day, address indexed user, address indexed token, uint32 voteAmount)",
 );
 
 /** Blocks per period (Base ~2s block time) */
@@ -21,9 +21,9 @@ const BLOCKS_PER_MONTH = BLOCKS_PER_DAY * 30n;
 /** Max block range per getLogs call (public RPC safe limit) */
 const MAX_BLOCK_RANGE = 10_000n;
 /** Max parallel chunk requests */
-const MAX_PARALLEL = 5;
+const MAX_PARALLEL = 10;
 
-type Period = 'today' | 'week' | 'month';
+type Period = "today" | "week" | "month";
 
 interface VoteAgg {
   tokenAddress: string;
@@ -39,7 +39,10 @@ async function fetchLogsChunked(fromBlock: bigint, toBlock: bigint) {
   const chunks: Array<{ from: bigint; to: bigint }> = [];
   let cursor = fromBlock;
   while (cursor <= toBlock) {
-    const end = cursor + MAX_BLOCK_RANGE - 1n > toBlock ? toBlock : cursor + MAX_BLOCK_RANGE - 1n;
+    const end =
+      cursor + MAX_BLOCK_RANGE - 1n > toBlock
+        ? toBlock
+        : cursor + MAX_BLOCK_RANGE - 1n;
     chunks.push({ from: cursor, to: end });
     cursor = end + 1n;
   }
@@ -50,13 +53,13 @@ async function fetchLogsChunked(fromBlock: bigint, toBlock: bigint) {
     const batch = chunks.slice(i, i + MAX_PARALLEL);
     const results = await Promise.all(
       batch.map((c) =>
-        logsClient.getLogs({
+        publicClient.getLogs({
           address: CONTRACTS.MINTPAD,
           event: VOTED_EVENT,
           fromBlock: c.from,
           toBlock: c.to,
-        })
-      )
+        }),
+      ),
     );
     for (const logs of results) allLogs.push(...logs);
   }
@@ -67,14 +70,12 @@ async function fetchLogsChunked(fromBlock: bigint, toBlock: bigint) {
 /**
  * Aggregate logs into vote data by token
  */
-function aggregateLogs(
-  logs: any[],
-  filterDay?: bigint
-): Map<string, VoteAgg> {
+function aggregateLogs(logs: any[], filterDay?: bigint): Map<string, VoteAgg> {
   const agg = new Map<string, VoteAgg>();
 
   for (const log of logs) {
-    if (filterDay !== undefined && (log.args.day as bigint) !== filterDay) continue;
+    if (filterDay !== undefined && (log.args.day as bigint) !== filterDay)
+      continue;
 
     const token = (log.args.token as string).toLowerCase();
     const voter = log.args.user as string;
@@ -95,8 +96,10 @@ function aggregateLogs(
 /**
  * Fetch Voted events for a block range and aggregate by token
  */
-async function fetchVotedEvents(fromBlock: bigint): Promise<Map<string, VoteAgg>> {
-  const toBlock = await publicClient.getBlockNumber();
+async function fetchVotedEvents(
+  fromBlock: bigint,
+  toBlock: bigint,
+): Promise<Map<string, VoteAgg>> {
   const logs = await fetchLogsChunked(fromBlock > 0n ? fromBlock : 0n, toBlock);
   return aggregateLogs(logs);
 }
@@ -105,17 +108,22 @@ async function fetchVotedEvents(fromBlock: bigint): Promise<Map<string, VoteAgg>
  * For "today" period: use the contract's day number to filter events
  */
 async function fetchTodayVotedEvents(): Promise<Map<string, VoteAgg>> {
-  const currentDay = await publicClient.readContract({
-    address: CONTRACTS.MINTPAD,
-    abi: MINTPAD_ABI,
-    functionName: 'getCurrentDay',
-  }) as bigint;
+  const [currentDay, currentBlock] = await Promise.all([
+    publicClient.readContract({
+      address: CONTRACTS.MINTPAD,
+      abi: MINTPAD_ABI,
+      functionName: "getCurrentDay",
+    }) as Promise<bigint>,
+    publicClient.getBlockNumber(),
+  ]);
 
-  const currentBlock = await publicClient.getBlockNumber();
   // ~27h back — enough to ensure we cover the full current day regardless of when it started
-  const fromBlock = currentBlock - BLOCKS_PER_DAY - (BLOCKS_PER_DAY / 8n);
+  const fromBlock = currentBlock - BLOCKS_PER_DAY - BLOCKS_PER_DAY / 8n;
 
-  const logs = await fetchLogsChunked(fromBlock > 0n ? fromBlock : 0n, currentBlock);
+  const logs = await fetchLogsChunked(
+    fromBlock > 0n ? fromBlock : 0n,
+    currentBlock,
+  );
   return aggregateLogs(logs, currentDay);
 }
 
@@ -126,30 +134,35 @@ export async function topVotedCommand(options: {
   period?: string;
   limit?: string;
 }): Promise<void> {
-  const period = (options.period || 'today') as Period;
-  const limit = parseInt(options.limit || '20', 10);
+  const period = (options.period || "today") as Period;
+  const limit = parseInt(options.limit || "20", 10);
 
-  if (!['today', 'week', 'month'].includes(period)) {
-    console.error('Invalid period. Use: today, week, or month');
+  if (!["today", "week", "month"].includes(period)) {
+    console.error("Invalid period. Use: today, week, or month");
     process.exit(1);
   }
 
   const periodLabel =
-    period === 'today' ? "Today's" : period === 'week' ? 'This Week\'s' : 'This Month\'s';
+    period === "today"
+      ? "Today's"
+      : period === "week"
+        ? "This Week's"
+        : "This Month's";
 
   console.log(`${periodLabel} Top Voted Projects`);
-  console.log('='.repeat(40) + '\n');
+  console.log("=".repeat(40) + "\n");
 
-  // Fetch vote data and project list in parallel
+  // Fetch vote data, project list, and price in parallel
   let aggPromise: Promise<Map<string, VoteAgg>>;
 
-  if (period === 'today') {
+  if (period === "today") {
     aggPromise = fetchTodayVotedEvents();
   } else {
-    const currentBlock = await publicClient.getBlockNumber();
-    const blocksBack = period === 'week' ? BLOCKS_PER_WEEK : BLOCKS_PER_MONTH;
-    const fromBlock = currentBlock - blocksBack;
-    aggPromise = fetchVotedEvents(fromBlock > 0n ? fromBlock : 0n);
+    aggPromise = publicClient.getBlockNumber().then((currentBlock) => {
+      const blocksBack = period === "week" ? BLOCKS_PER_WEEK : BLOCKS_PER_MONTH;
+      const fromBlock = currentBlock - blocksBack;
+      return fetchVotedEvents(fromBlock > 0n ? fromBlock : 0n, currentBlock);
+    });
   }
 
   const [agg, projects, huntPrice] = await Promise.all([
@@ -159,13 +172,13 @@ export async function topVotedCommand(options: {
   ]);
 
   if (agg.size === 0) {
-    console.log('No votes recorded for this period.');
+    console.log("No votes recorded for this period.");
     return;
   }
 
   // Build project lookup by lowercase address
   const projectMap = new Map(
-    projects.map((p) => [p.tokenAddress.toLowerCase(), p])
+    projects.map((p) => [p.tokenAddress.toLowerCase(), p]),
   );
 
   // Sort by total votes descending
@@ -176,31 +189,33 @@ export async function topVotedCommand(options: {
   const totalVoters = new Set(sorted.flatMap((e) => [...e.uniqueVoters])).size;
 
   console.log(
-    ' #  Symbol          Votes   Backers   Reserve (HUNT)         USD'
+    " #  Symbol          Votes   Backers   Reserve (HUNT)         USD",
   );
   console.log(
-    '--- ----------   --------   -------   ----------------   -----------'
+    "--- ----------   --------   -------   ----------------   -----------",
   );
 
   top.forEach((entry, i) => {
     const project = projectMap.get(entry.tokenAddress);
     const num = String(i + 1).padStart(2);
-    const sym = (project?.symbol || '???').padEnd(10);
+    const sym = (project?.symbol || "???").padEnd(10);
     const votes = formatNumber(entry.totalVotes).padStart(8);
     const backers = formatNumber(entry.uniqueVoters.size).padStart(7);
     const reserve = project
       ? formatNumber(project.reserveBalance.toFixed(0)).padStart(16)
-      : ''.padStart(16, '-');
+      : "".padStart(16, "-");
     const usd = project
       ? huntToUSD(project.reserveBalance, huntPrice).padStart(11)
-      : ''.padStart(11, '-');
+      : "".padStart(11, "-");
 
     console.log(`${num}  ${sym}   ${votes}   ${backers}   ${reserve}   ${usd}`);
   });
 
-  console.log('');
+  console.log("");
   console.log(
-    `Period: ${periodLabel.replace("'s", '')} | Total votes: ${formatNumber(totalVotes)} | Unique backers: ${formatNumber(totalVoters)}`
+    `Period: ${periodLabel.replace("'s", "")} | Total votes: ${formatNumber(totalVotes)} | Unique backers: ${formatNumber(totalVoters)}`,
   );
-  console.log(`Showing ${Math.min(top.length, limit)} of ${sorted.length} voted projects`);
+  console.log(
+    `Showing ${Math.min(top.length, limit)} of ${sorted.length} voted projects`,
+  );
 }

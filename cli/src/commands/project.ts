@@ -3,7 +3,7 @@
  */
 import type { Address } from 'viem';
 import { formatEther, parseAbiItem } from 'viem';
-import { publicClient, logsClient } from '../config/client.js';
+import { publicClient } from '../config/client.js';
 import { CONTRACTS } from '../config/contracts.js';
 import { BOND_ABI } from '../abi/bond.js';
 import { ERC20_ABI } from '../abi/erc20.js';
@@ -38,7 +38,7 @@ async function fetchLogsChunked(fromBlock: bigint, toBlock: bigint, tokenAddress
     const batch = chunks.slice(i, i + MAX_PARALLEL);
     const results = await Promise.all(
       batch.map((c) =>
-        logsClient.getLogs({
+        publicClient.getLogs({
           address: CONTRACTS.MINTPAD,
           event: VOTED_EVENT,
           ...(tokenAddress ? { args: { token: tokenAddress } } : {}),
