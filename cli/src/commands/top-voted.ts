@@ -5,9 +5,10 @@ import { parseAbiItem } from "viem";
 import { publicClient } from "../config/client.js";
 import { CONTRACTS } from "../config/contracts.js";
 import { MINTPAD_ABI } from "../abi/mintpad.js";
-import { fetchAllProjects } from "../utils/api.js";
-import { formatNumber } from "../utils/format.js";
+import { fetchAllProjects, type TokenData } from "../utils/api.js";
+import { formatNumber, shortenAddress } from "../utils/format.js";
 import { getHuntPrice, huntToUSD } from "../utils/price.js";
+import type { Address } from "viem";
 
 const VOTED_EVENT = parseAbiItem(
   "event Voted(uint256 indexed day, address indexed user, address indexed token, uint32 voteAmount)",
@@ -31,11 +32,17 @@ interface VoteAgg {
   uniqueVoters: Set<string>;
 }
 
+type OnLogsBatch = (logs: any[], chunkIndex: number, totalChunks: number) => void;
+
 /**
- * Fetch logs in chunks (parallel) to avoid public RPC range limits
+ * Fetch logs in chunks (parallel) to avoid public RPC range limits.
+ * When `onBatch` is provided, streams each batch of logs as they arrive.
  */
-async function fetchLogsChunked(fromBlock: bigint, toBlock: bigint) {
-  // Build chunk ranges
+async function fetchLogsChunked(
+  fromBlock: bigint,
+  toBlock: bigint,
+  onBatch?: OnLogsBatch,
+) {
   const chunks: Array<{ from: bigint; to: bigint }> = [];
   let cursor = fromBlock;
   while (cursor <= toBlock) {
@@ -47,8 +54,9 @@ async function fetchLogsChunked(fromBlock: bigint, toBlock: bigint) {
     cursor = end + 1n;
   }
 
-  // Execute in parallel batches
   const allLogs: any[] = [];
+  let completedChunks = 0;
+
   for (let i = 0; i < chunks.length; i += MAX_PARALLEL) {
     const batch = chunks.slice(i, i + MAX_PARALLEL);
     const results = await Promise.all(
@@ -61,7 +69,13 @@ async function fetchLogsChunked(fromBlock: bigint, toBlock: bigint) {
         }),
       ),
     );
-    for (const logs of results) allLogs.push(...logs);
+    for (const logs of results) {
+      allLogs.push(...logs);
+      completedChunks++;
+      if (onBatch && logs.length > 0) {
+        onBatch(logs, completedChunks, chunks.length);
+      }
+    }
   }
 
   return allLogs;
@@ -94,20 +108,60 @@ function aggregateLogs(logs: any[], filterDay?: bigint): Map<string, VoteAgg> {
 }
 
 /**
- * Fetch Voted events for a block range and aggregate by token
+ * Build a function that prints each vote log line in real-time
  */
+function makeVerboseLogger(
+  symbolMap: Map<string, string>,
+): OnLogsBatch {
+  let count = 0;
+  return (logs, chunkIdx, totalChunks) => {
+    for (const log of logs) {
+      count++;
+      const day = Number(log.args.day as bigint);
+      const voter = log.args.user as string;
+      const tokenAddr = (log.args.token as string).toLowerCase();
+      const sym = symbolMap.get(tokenAddr) ?? shortenAddress(tokenAddr as Address);
+      const amount = Number(log.args.voteAmount);
+      const block = log.blockNumber != null ? Number(log.blockNumber) : "?";
+      const txShort = log.transactionHash
+        ? (log.transactionHash as string).slice(0, 10)
+        : "";
+      const dim = "\x1b[2m";
+      const reset = "\x1b[0m";
+      const cyan = "\x1b[36m";
+      const yellow = "\x1b[33m";
+      const green = "\x1b[32m";
+      console.log(
+        `${dim}${String(count).padStart(5)}${reset}  ` +
+          `${dim}block ${block}${reset}  ` +
+          `${cyan}${voter}${reset} → ${yellow}${sym.padEnd(10)}${reset} ` +
+          `${green}+${amount}${reset} votes  ` +
+          `${dim}day=${day}${reset}` +
+          (txShort ? `  ${dim}tx:${txShort}…${reset}` : ""),
+      );
+    }
+    process.stdout.write(
+      `\x1b[2m  [${chunkIdx}/${totalChunks} chunks scanned]\x1b[0m\r`,
+    );
+  };
+}
+
 async function fetchVotedEvents(
   fromBlock: bigint,
   toBlock: bigint,
+  onBatch?: OnLogsBatch,
 ): Promise<Map<string, VoteAgg>> {
-  const logs = await fetchLogsChunked(fromBlock > 0n ? fromBlock : 0n, toBlock);
+  const logs = await fetchLogsChunked(
+    fromBlock > 0n ? fromBlock : 0n,
+    toBlock,
+    onBatch,
+  );
   return aggregateLogs(logs);
 }
 
-/**
- * For "today" period: use the contract's day number to filter events
- */
-async function fetchTodayVotedEvents(): Promise<Map<string, VoteAgg>> {
+async function fetchTodayVotedEvents(
+  onBatch?: OnLogsBatch,
+): Promise<Map<string, VoteAgg>> {
   const [currentDay, currentBlock] = await Promise.all([
     publicClient.readContract({
       address: CONTRACTS.MINTPAD,
@@ -117,12 +171,12 @@ async function fetchTodayVotedEvents(): Promise<Map<string, VoteAgg>> {
     publicClient.getBlockNumber(),
   ]);
 
-  // ~27h back — enough to ensure we cover the full current day regardless of when it started
   const fromBlock = currentBlock - BLOCKS_PER_DAY - BLOCKS_PER_DAY / 8n;
 
   const logs = await fetchLogsChunked(
     fromBlock > 0n ? fromBlock : 0n,
     currentBlock,
+    onBatch,
   );
   return aggregateLogs(logs, currentDay);
 }
@@ -133,9 +187,11 @@ async function fetchTodayVotedEvents(): Promise<Map<string, VoteAgg>> {
 export async function topVotedCommand(options: {
   period?: string;
   limit?: string;
+  verbose?: boolean;
 }): Promise<void> {
   const period = (options.period || "today") as Period;
   const limit = parseInt(options.limit || "20", 10);
+  const verbose = options.verbose ?? false;
 
   if (!["today", "week", "month"].includes(period)) {
     console.error("Invalid period. Use: today, week, or month");
@@ -149,27 +205,66 @@ export async function topVotedCommand(options: {
         ? "This Week's"
         : "This Month's";
 
-  console.log(`${periodLabel} Top Voted Projects`);
-  console.log("=".repeat(40) + "\n");
+  // When verbose, fetch projects first so we can resolve symbols in the log stream
+  let projects: TokenData[];
+  let symbolMap: Map<string, string>;
 
-  // Fetch vote data, project list, and price in parallel
+  if (verbose) {
+    projects = await fetchAllProjects();
+    symbolMap = new Map(
+      projects.map((p) => [p.tokenAddress.toLowerCase(), p.symbol]),
+    );
+
+    console.log(`${periodLabel} Voting Logs (verbose)`);
+    console.log("=".repeat(50));
+    console.log(
+      "  \x1b[2m  idx  block          voter        → token        votes  day    tx\x1b[0m",
+    );
+    console.log("");
+  } else {
+    projects = [];
+    symbolMap = new Map();
+
+    console.log(`${periodLabel} Top Voted Projects`);
+    console.log("=".repeat(40) + "\n");
+  }
+
+  const onBatch = verbose ? makeVerboseLogger(symbolMap) : undefined;
   let aggPromise: Promise<Map<string, VoteAgg>>;
 
   if (period === "today") {
-    aggPromise = fetchTodayVotedEvents();
+    aggPromise = fetchTodayVotedEvents(onBatch);
   } else {
     aggPromise = publicClient.getBlockNumber().then((currentBlock) => {
       const blocksBack = period === "week" ? BLOCKS_PER_WEEK : BLOCKS_PER_MONTH;
       const fromBlock = currentBlock - blocksBack;
-      return fetchVotedEvents(fromBlock > 0n ? fromBlock : 0n, currentBlock);
+      return fetchVotedEvents(
+        fromBlock > 0n ? fromBlock : 0n,
+        currentBlock,
+        onBatch,
+      );
     });
   }
 
-  const [agg, projects, huntPrice] = await Promise.all([
-    aggPromise,
-    fetchAllProjects(),
-    getHuntPrice(),
-  ]);
+  const fetchDeps = verbose
+    ? Promise.all([getHuntPrice()]).then(([hp]) => ({
+        projects,
+        huntPrice: hp,
+      }))
+    : Promise.all([fetchAllProjects(), getHuntPrice()]).then(([p, hp]) => ({
+        projects: p,
+        huntPrice: hp,
+      }));
+
+  const [agg, deps] = await Promise.all([aggPromise, fetchDeps]);
+  projects = deps.projects;
+  const huntPrice = deps.huntPrice;
+
+  if (verbose) {
+    process.stdout.write("\x1b[2K");
+    console.log("\n" + "=".repeat(50));
+    console.log("Aggregated Summary\n");
+  }
 
   if (agg.size === 0) {
     console.log("No votes recorded for this period.");

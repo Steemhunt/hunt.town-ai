@@ -90,6 +90,7 @@ cli
   .description('Top voted projects by on-chain voting activity')
   .option('-p, --period <period>', 'Time period: today, week, or month', 'today')
   .option('-n, --limit <n>', 'Number of projects to show', '20')
+  .option('-v, --verbose', 'Stream raw voting logs in real-time')
   .action((opts) => run(() => topVotedCommand(opts))());
 
 cli
