@@ -94,7 +94,7 @@ export async function voteCommand(symbol: string, amount: string): Promise<void>
       address: CONTRACTS.MINTPAD,
       abi: MINTPAD_ABI,
       functionName: 'vote',
-      args: [project.tokenAddress as Address, voteAmount as unknown as bigint], // Cast to handle uint32
+      args: [project.tokenAddress as Address, voteAmount],
     });
 
     await waitForTx(hash);

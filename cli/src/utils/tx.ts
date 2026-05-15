@@ -2,15 +2,17 @@
  * Transaction utilities for write operations
  */
 import { formatEther, maxUint256 } from 'viem';
-import type { Address, Hash, WalletClient } from 'viem';
-import { publicClient } from '../config/client.js';
+import type { Address, Hash } from 'viem';
+import { publicClient, createWalletClientForBase } from '../config/client.js';
 import { ERC20_ABI } from '../abi/erc20.js';
+
+export type BaseWalletClient = ReturnType<typeof createWalletClientForBase>;
 
 /**
  * Ensure token approval for a spender
  */
 export async function ensureApproval(
-  walletClient: WalletClient,
+  walletClient: BaseWalletClient,
   tokenAddress: Address,
   spenderAddress: Address,
   amount: bigint

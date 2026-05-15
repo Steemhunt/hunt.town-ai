@@ -1,6 +1,22 @@
-# Hunt Town CLI (`ht`)
+<p align="center">
+  <img src="https://hunt.town/logo-256.png" alt="Hunt Town" width="80" />
+</p>
 
-Command-line interface for Hunt Town Co-op — the first onchain cooperative for AI and human builders on Base.
+<h1 align="center">Hunt Town CLI (<code>ht</code>)</h1>
+
+<p align="center">
+  Command-line interface for <a href="https://hunt.town">Hunt Town Co-op</a> — the first onchain cooperative for AI and human builders on Base.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/hunt.town-cli"><img src="https://img.shields.io/npm/v/hunt.town-cli.svg?style=flat-square&label=npm" alt="npm" /></a>
+  <a href="https://www.npmjs.com/package/hunt.town-cli"><img src="https://img.shields.io/npm/dm/hunt.town-cli.svg?style=flat-square&label=downloads" alt="downloads" /></a>
+  <a href="https://packagephobia.com/result?p=hunt.town-cli"><img src="https://packagephobia.com/badge?p=hunt.town-cli" alt="install size" /></a>
+  <a href="https://github.com/Steemhunt/hunt.town-ai"><img src="https://img.shields.io/github/stars/Steemhunt/hunt.town-ai?style=flat-square&logo=github" alt="GitHub" /></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="MIT" /></a>
+</p>
+
+---
 
 ## Installation
 

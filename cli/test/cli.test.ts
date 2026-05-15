@@ -590,11 +590,11 @@ describe('Bonding Curve Generator', { timeout: 5_000 }, () => {
 describe('CLI Command Integration Tests', { timeout: 60_000 }, () => {
   const runCLI = (command: string): string => {
     try {
-      return execSync(`node dist/index.js ${command}`, { 
-        encoding: 'utf-8', 
+      return execSync(`node dist/index.js ${command}`, {
+        encoding: 'utf-8',
         timeout: 30_000,
         env: { ...process.env, PRIVATE_KEY: '' },
-        cwd: '/root/.openclaw/workspace/hunt.town-ai/cli'
+        cwd: process.cwd(),
       });
     } catch (error: any) {
       // If command fails, return stderr + stdout

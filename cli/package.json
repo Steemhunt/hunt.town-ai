@@ -1,7 +1,26 @@
 {
   "name": "hunt.town-cli",
   "version": "0.1.1",
-  "description": "CLI for Hunt Town Co-op — the first onchain cooperative for AI and human builders",
+  "description": "CLI for Hunt Town Co-op — the first onchain cooperative for AI and human builders on Base.",
+  "keywords": [
+    "hunt-town",
+    "co-op",
+    "cli",
+    "web3",
+    "base",
+    "viem",
+    "onchain",
+    "ai-agents"
+  ],
+  "homepage": "https://github.com/Steemhunt/hunt.town-ai#readme",
+  "bugs": {
+    "url": "https://github.com/Steemhunt/hunt.town-ai/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Steemhunt/hunt.town-ai.git",
+    "directory": "cli"
+  },
   "main": "dist/index.js",
   "bin": {
     "ht": "./dist/index.js"
