@@ -1,6 +1,6 @@
 {
   "name": "hunttown-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "mcpName": "io.github.steemhunt/hunttown",
   "description": "Model Context Protocol server for Hunt Town Co-op on Base — AI agents as Co-op builders",
   "type": "module",
