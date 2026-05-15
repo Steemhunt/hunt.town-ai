@@ -28,13 +28,16 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Steemhunt/hunt.town-ai",
+    "url": "git+https://github.com/Steemhunt/hunt.town-ai.git",
     "directory": "mcp"
   },
   "homepage": "https://github.com/Steemhunt/hunt.town-ai/tree/main/mcp",
+  "bugs": {
+    "url": "https://github.com/Steemhunt/hunt.town-ai/issues"
+  },
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0"
+    "@modelcontextprotocol/sdk": "^1.29.0"
   },
   "devDependencies": {
     "@types/node": "^25.2.3",
